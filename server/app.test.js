@@ -75,6 +75,12 @@ test('API de extremo a extremo', { skip: !url && 'sin TEST_DATABASE_URL' }, asyn
   await call('/sync', { drawings: [dr('dddddd', 500)] }, o.body.token);
   assert.deepStrictEqual((await call('/sync', null, A)).body.drawings, []);
 
+  // La web se sirve en la raíz
+  const home = await fetch(base + '/');
+  assert.strictEqual(home.status, 200);
+  assert.match(home.headers.get('content-type'), /text\/html/);
+  assert.match(await home.text(), /¿Qué dibujo hoy\?/);
+
   // CORS
   const pre = await fetch(base + '/sync', { method: 'OPTIONS', headers: { Origin: 'https://ok.example' } });
   assert.strictEqual(pre.headers.get('access-control-allow-origin'), 'https://ok.example');
