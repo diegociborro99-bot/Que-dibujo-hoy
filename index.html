@@ -283,7 +283,7 @@ const MED={
 const LVL={1:{es:'Sencillo',t:'15–25 min'},2:{es:'Medio',t:'30–45 min'},3:{es:'Detallado',t:'1 h o más'}};
 const KEY='quedibujo.v1';
 // URL del backend de sincronización (Railway). Vacío = sin sincronización.
-const API_URL='';
+const API_URL='https://que-dibujo-hoy-production.up.railway.app';
 let st={idx:0,idxAt:0,clearedAt:0,view:null,medium:'lapiz',level:2,cur:null,photo:null,hist:[],seen:[]};
 try{Object.assign(st,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
 if(st.view==null)st.view=st.idx;
