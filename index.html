@@ -123,6 +123,11 @@ details.cfg a{color:var(--ink)}
 .krow{display:flex;gap:8px;flex-wrap:wrap}
 .krow input{flex:1 1 220px;font:16px Figtree,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);min-height:44px}
 .krow button{min-height:44px;padding:0 16px}
+.acc{display:grid;gap:8px}
+.acc input{font:16px Figtree,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);min-height:44px;width:100%}
+.acc .krow{margin-top:2px}.acc .btn{min-height:44px;padding:0 16px;flex:1 1 140px}
+.acc .msg{margin:2px 0 0;min-height:1.4em}
+.acc .msg.err{color:#c0392b}
 @media(max-width:820px){.card{grid-template-columns:1fr}.photo{min-height:380px}}
 @media(max-width:480px){.photo{min-height:300px}.photo img{padding:8px}.topic{grid-template-columns:minmax(0,1fr) 84px}.sketch{width:84px;height:84px}.chip{font-size:13px}}
 </style>
@@ -191,6 +196,20 @@ details.cfg a{color:var(--ink)}
   <h2>Cuántas veces has dibujado cada cosa</h2>
   <p class="total" id="total"></p>
   <div class="stats" id="stats"></div>
+
+  <details class="cfg" id="syncBox" hidden>
+    <summary id="syncSum">Sincronizar entre dispositivos</summary>
+    <p>Crea un usuario y entra con él en tus otros dispositivos: el historial y la categoría que toca se mantienen iguales en todos. Sin usuario, la app sigue funcionando solo en este navegador.</p>
+    <form class="acc" id="accOut" autocomplete="on">
+      <input id="syUser" placeholder="Usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required aria-label="Usuario">
+      <input id="syPass" type="password" placeholder="Contraseña (mín. 8 caracteres)" autocomplete="current-password" required aria-label="Contraseña">
+      <div class="krow"><button class="btn" type="submit" id="syLogin">Entrar</button><button class="btn" type="button" id="syReg">Crear usuario</button></div>
+    </form>
+    <div class="acc" id="accIn" hidden>
+      <div class="krow"><button class="btn" type="button" id="syNow">Sincronizar ahora</button><button class="btn" type="button" id="syOut">Cerrar sesión</button></div>
+    </div>
+    <p class="msg" id="syMsg" role="status"></p>
+  </details>
 
   <details class="cfg">
     <summary>Fotos de más calidad con Pexels (opcional)</summary>
@@ -263,9 +282,13 @@ const MED={
 };
 const LVL={1:{es:'Sencillo',t:'15–25 min'},2:{es:'Medio',t:'30–45 min'},3:{es:'Detallado',t:'1 h o más'}};
 const KEY='quedibujo.v1';
-let st={idx:0,view:null,medium:'lapiz',level:2,cur:null,photo:null,hist:[],seen:[]};
+// URL del backend de sincronización (Railway). Vacío = sin sincronización.
+const API_URL='';
+let st={idx:0,idxAt:0,clearedAt:0,view:null,medium:'lapiz',level:2,cur:null,photo:null,hist:[],seen:[]};
 try{Object.assign(st,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
 if(st.view==null)st.view=st.idx;
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+st.hist.forEach((x,i)=>{if(!x.id)x.id='l'+x.d.toString(36)+i});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
 const $=id=>document.getElementById(id);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -436,10 +459,10 @@ $('otherPhoto').addEventListener('click',findPhoto);
 $('otherTopic').addEventListener('click',newTopic);
 $('done').addEventListener('click',()=>{
   if(!st.cur)return;
-  st.hist.push({cat:cat().id,es:st.cur.es,en:st.cur.en,m:st.medium,d:Date.now(),img:isAbs()?null:st.photo});
-  if(st.view===st.idx)st.idx=(st.idx+1)%CATS.length;
+  st.hist.push({id:newId(),cat:cat().id,es:st.cur.es,en:st.cur.en,m:st.medium,d:Date.now(),img:isAbs()?null:st.photo});
+  if(st.view===st.idx){st.idx=(st.idx+1)%CATS.length;st.idxAt=Date.now()}
   st.view=st.idx;st.cur=null;save();
-  renderRota();renderControls();renderHist();newTopic();
+  renderRota();renderControls();renderHist();newTopic();sync();
   window.scrollTo({top:0,behavior:'smooth'});
 });
 $('valBtn').addEventListener('click',e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',on);const img=$('photo').querySelector('img');if(img)img.classList.toggle('values',on)});
@@ -448,13 +471,68 @@ $('lbClose').addEventListener('click',closeLb);
 $('lb').addEventListener('click',e=>{if(e.target.id==='lb')closeLb()});
 $('lbVal').addEventListener('click',e=>{const on=e.currentTarget.getAttribute('aria-pressed')!=='true';e.currentTarget.setAttribute('aria-pressed',on);$('lbImg').classList.toggle('values',on)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLb()});
-$('clear').addEventListener('click',()=>{st.hist=[];save();renderHist()});
+$('clear').addEventListener('click',()=>{st.hist=[];st.clearedAt=Date.now();save();renderHist();sync()});
 
 try{$('pxKey').value=localStorage.getItem('quedibujo.pexels')||''}catch(e){}
 $('pxSave').addEventListener('click',()=>{const v=$('pxKey').value.trim();try{v?localStorage.setItem('quedibujo.pexels',v):localStorage.removeItem('quedibujo.pexels')}catch(e){}
   $('pxMsg').textContent=v?'Guardada. Las próximas fotos se buscarán primero en Pexels.':'Clave borrada. Se usan Openverse y Wikimedia.';if(!isAbs())findPhoto()});
 
+// ---- Sincronización ----
+const api=()=>{let u='';try{u=localStorage.getItem('quedibujo.api')||''}catch(e){}return (u||API_URL).replace(/\/+$/,'')};
+let auth=null;try{auth=JSON.parse(localStorage.getItem('quedibujo.auth')||'null')}catch(e){}
+const setAuth=a=>{auth=a;try{a?localStorage.setItem('quedibujo.auth',JSON.stringify(a)):localStorage.removeItem('quedibujo.auth')}catch(e){}renderSync()};
+const syMsg=(t,err)=>{$('syMsg').textContent=t||'';$('syMsg').classList.toggle('err',!!err)};
+function renderSync(){
+  $('syncBox').hidden=!api();
+  $('syncSum').textContent=auth?'Sincronizado como '+auth.username:'Sincronizar entre dispositivos';
+  $('accOut').hidden=!!auth;$('accIn').hidden=!auth;
+}
+async function call(path,body){
+  const r=await fetch(api()+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth.token}:{})},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const e=new Error(j.error||'Error '+r.status);e.status=r.status;throw e}
+  return j;
+}
+let syncing=null,again=false;
+function sync(){
+  if(!auth||!api())return Promise.resolve();
+  if(syncing){again=true;return syncing}
+  syncing=(async()=>{
+    try{
+      const oldIdx=st.idx;
+      const out=await call('/sync',{drawings:st.hist,clearedAt:st.clearedAt,idx:st.idx,idxAt:st.idxAt});
+      st.hist=out.drawings;st.clearedAt=out.clearedAt;st.idx=out.idx;st.idxAt=out.idxAt;
+      const follow=st.view===oldIdx&&st.idx!==oldIdx;
+      if(follow){st.view=st.idx;st.cur=null}
+      save();renderRota();renderControls();renderHist();
+      if(follow)newTopic();
+      syMsg('Sincronizado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}));
+    }catch(e){
+      if(e.status===401){setAuth(null);syMsg('La sesión ha caducado. Vuelve a entrar.',true)}
+      else syMsg('No se pudo sincronizar. Se reintentará más tarde.',true);
+    }finally{syncing=null;if(again){again=false;sync()}}
+  })();
+  return syncing;
+}
+async function enter(path){
+  const username=$('syUser').value.trim(),password=$('syPass').value;
+  if(!username||!password)return;
+  syMsg('Un momento…');
+  try{
+    const j=await call(path,{username,password});
+    setAuth({token:j.token,username:j.username});$('syPass').value='';
+    await sync();
+  }catch(e){syMsg(e.message,true)}
+}
+$('accOut').addEventListener('submit',e=>{e.preventDefault();enter('/auth/login')});
+$('syReg').addEventListener('click',()=>{if($('accOut').reportValidity())enter('/auth/register')});
+$('syNow').addEventListener('click',sync);
+$('syOut').addEventListener('click',()=>{setAuth(null);syMsg('Sesión cerrada. Tu historial sigue en este navegador.')});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
+renderSync();
+
 renderRota();renderControls();renderHist();
+sync();
 if(st.cur){renderTopic();isAbs()?showIdea():findPhoto()}else newTopic();
 }
 </script>

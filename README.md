@@ -12,10 +12,11 @@ Una página sencilla para los días en que no sabes qué dibujar. Te propone un 
 - **Fotos de referencia** desde API abiertas: [Openverse](https://openverse.org) y [Wikimedia Commons](https://commons.wikimedia.org), sin clave. Opcionalmente, con una clave gratuita de [Pexels](https://www.pexels.com/api/) busca primero allí.
 - **Ver valores:** muestra la foto en escala de grises para estudiar luces y sombras.
 - **Ideas absurdas:** fuera de la rotación, sin foto («un plátano en patines», «una taza con bigote»…).
+- **Sincronización opcional** entre dispositivos con un usuario y contraseña (ver más abajo).
 - **Historial** con la foto de cada dibujo y **contador** por categoría.
 - Botón para buscar más referencias en Pinterest.
 
-Todo se guarda en el navegador (`localStorage`); no hay servidor ni cuentas.
+Por defecto todo se guarda en el navegador (`localStorage`). Si configuras el backend de `server/`, puedes crear un usuario y el historial se sincroniza entre dispositivos.
 
 ## Usarla
 
@@ -23,6 +24,20 @@ Es un único archivo, `index.html`, sin dependencias ni compilación.
 
 - **En local:** abre `index.html` con doble clic (necesita conexión para las fotos).
 - **En GitHub Pages:** en el repositorio, *Settings → Pages → Deploy from a branch → `main` / root*. Quedará en `https://diegociborro99-bot.github.io/Que-dibujo-hoy/`.
+
+## Sincronización (backend en Railway)
+
+La carpeta `server/` es una API pequeña (Node + Express + Postgres) con usuario/contraseña e historial. Sin ella la web funciona igual, solo en local.
+
+1. En Railway: *New Project → Deploy from GitHub repo* y elige este repositorio. En el servicio, *Settings → Root Directory* = `server`.
+2. Añade un **Postgres** al proyecto (*New → Database → PostgreSQL*) y en el servicio de la API crea la variable `DATABASE_URL` con referencia `${{Postgres.DATABASE_URL}}`.
+3. Variables del servicio: `JWT_SECRET` (una cadena larga y aleatoria, p. ej. `openssl rand -hex 32`) y, si tu web está en otro dominio, `ALLOWED_ORIGIN` (por defecto `https://diegociborro99-bot.github.io`; admite varios separados por comas).
+4. *Settings → Networking → Generate Domain* y copia la URL pública.
+5. En `index.html`, pon esa URL en `const API_URL='...'` y súbelo. Aparecerá el bloque «Sincronizar entre dispositivos» al final de la página.
+
+Las tablas se crean solas al arrancar. Para probar en local: `cd server && npm i && TEST_DATABASE_URL=postgres://… npm test`.
+
+**Cómo se fusiona:** los dibujos se unen por identificador, así que no se pierde ninguno entre dispositivos. «Borrar historial» deja una marca de fecha para que otro dispositivo no lo recupere. La categoría que toca gana por el cambio más reciente.
 
 ## Créditos
 

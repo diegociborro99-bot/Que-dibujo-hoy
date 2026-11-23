@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS users (
+  id         BIGSERIAL PRIMARY KEY,
+  username   TEXT NOT NULL UNIQUE,
+  pass_hash  TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS sync_state (
+  user_id    BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  idx        INT NOT NULL DEFAULT 0,
+  idx_at     BIGINT NOT NULL DEFAULT 0,
+  cleared_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS drawings (
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id      TEXT NOT NULL,
+  d       BIGINT NOT NULL,
+  data    JSONB NOT NULL,
+  PRIMARY KEY (user_id, id)
+);
