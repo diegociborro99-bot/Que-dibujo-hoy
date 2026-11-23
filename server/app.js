@@ -1,4 +1,5 @@
 'use strict';
+const path = require('path');
 const express = require('express');
 const { hashPassword, checkPassword, signToken, verifyToken } = require('./auth');
 const { cleanPayload, merge } = require('./sync');
@@ -123,6 +124,9 @@ function createApp({ pool, secret, allowedOrigin }) {
   app.post('/sync', requireAuth, async (req, res, next) => {
     try { res.json(await syncTx(req.uid, cleanPayload(req.body))); } catch (e) { next(e); }
   });
+
+  // La web (una sola página) se sirve desde la misma dirección que la API.
+  app.use(express.static(path.join(__dirname, 'public')));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {

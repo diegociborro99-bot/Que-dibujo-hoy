@@ -20,10 +20,10 @@ Por defecto todo se guarda en el navegador (`localStorage`). Si configuras el ba
 
 ## Usarla
 
-Es un único archivo, `index.html`, sin dependencias ni compilación.
+La web es un único archivo, `server/public/index.html`, sin dependencias ni compilación. El servidor de Railway la sirve en su dirección raíz, junto a la API: `https://que-dibujo-hoy-production.up.railway.app`.
 
-- **En local:** abre `index.html` con doble clic (necesita conexión para las fotos).
-- **En GitHub Pages:** en el repositorio, *Settings → Pages → Deploy from a branch → `main` / root*. Quedará en `https://diegociborro99-bot.github.io/Que-dibujo-hoy/`.
+- **En local:** abre `server/public/index.html` con doble clic (necesita conexión para las fotos y, si quieres sincronizar, para el backend).
+- **Alternativa sin servidor:** el mismo archivo funciona en GitHub Pages u otro hosting estático.
 
 ## Sincronización (backend en Railway)
 
@@ -31,9 +31,9 @@ La carpeta `server/` es una API pequeña (Node + Express + Postgres) con usuario
 
 1. En Railway: *New Project → Deploy from GitHub repo* y elige este repositorio. En el servicio, *Settings → Root Directory* = `server`.
 2. Añade un **Postgres** al proyecto (*New → Database → PostgreSQL*) y en el servicio de la API crea la variable `DATABASE_URL` con referencia `${{Postgres.DATABASE_URL}}`.
-3. Variables del servicio: `JWT_SECRET` (una cadena larga y aleatoria, p. ej. `openssl rand -hex 32`) y, si tu web está en otro dominio, `ALLOWED_ORIGIN` (por defecto `https://diegociborro99-bot.github.io`; admite varios separados por comas).
+3. Variables del servicio: `JWT_SECRET` (una cadena larga y aleatoria, p. ej. `openssl rand -hex 32`) y, solo si sirves la web desde otro dominio, `ALLOWED_ORIGIN` (por defecto `https://diegociborro99-bot.github.io`; admite varios separados por comas). Si la web se abre desde la propia dirección de Railway no hace falta.
 4. *Settings → Networking → Generate Domain* y copia la URL pública.
-5. En `index.html`, pon esa URL en `const API_URL='...'` y súbelo. Aparecerá el bloque «Sincronizar entre dispositivos» al final de la página.
+5. En `server/public/index.html`, pon esa URL en `const API_URL='...'`. Aparecerá el bloque «Sincronizar entre dispositivos» al final de la página.
 
 Las tablas se crean solas al arrancar. Para probar en local: `cd server && npm i && TEST_DATABASE_URL=postgres://… npm test`.
 
