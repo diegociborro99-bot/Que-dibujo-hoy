@@ -22,7 +22,7 @@ Todo se guarda en el navegador (`localStorage`); no hay servidor ni cuentas.
 Es un único archivo, `index.html`, sin dependencias ni compilación.
 
 - **En local:** abre `index.html` con doble clic (necesita conexión para las fotos).
-- **En GitHub Pages:** en el repositorio, *Settings → Pages → Deploy from a branch → `main` / root*. Quedará en `https://diegociborro99.github.io/que-dibujo-hoy/`.
+- **En GitHub Pages:** en el repositorio, *Settings → Pages → Deploy from a branch → `main` / root*. Quedará en `https://diegociborro99-bot.github.io/Que-dibujo-hoy/`.
 
 ## Créditos
 
