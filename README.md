@@ -9,6 +9,7 @@ Una página sencilla para los días en que no sabes qué dibujar. Te propone un 
 - **Rotación:** siempre marca la categoría que «toca». Si un día prefieres otra, la eliges arriba; la rotación no se mueve hasta que dibujes la que toca.
 - **Técnica:** lápiz, lápices de colores o acuarela. Cada una ajusta la búsqueda de fotos (blanco y negro y luz marcada, colores vivos, luz suave) y trae un consejo.
 - **Complejidad:** sencillo, medio o detallado, con temas distintos para cada nivel.
+- **Referencias centradas en el tema:** cada búsqueda añade términos como «close up» o «isolated» y las fotos se puntúan para preferir aquellas en las que el tema es el protagonista, no un detalle de una escena llena de cosas. Muchos temas llevan además una nota breve sobre cómo abordarlos.
 - **Fotos de referencia** desde API abiertas: [Openverse](https://openverse.org) y [Wikimedia Commons](https://commons.wikimedia.org), sin clave. Opcionalmente, con una clave gratuita de [Pexels](https://www.pexels.com/api/) busca primero allí.
 - **Ver valores:** muestra la foto en escala de grises para estudiar luces y sombras.
 - **Ideas absurdas:** fuera de la rotación, sin foto («un plátano en patines», «una taza con bigote»…).
@@ -34,6 +35,8 @@ La carpeta `server/` es una API pequeña (Node + Express + Postgres) con usuario
 3. Variables del servicio: `JWT_SECRET` (una cadena larga y aleatoria, p. ej. `openssl rand -hex 32`) y, solo si sirves la web desde otro dominio, `ALLOWED_ORIGIN` (por defecto `https://diegociborro99-bot.github.io`; admite varios separados por comas). Si la web se abre desde la propia dirección de Railway no hace falta.
 4. *Settings → Networking → Generate Domain* y copia la URL pública.
 5. En `server/public/index.html`, pon esa URL en `const API_URL='...'`. Aparecerá el bloque «Sincronizar entre dispositivos» al final de la página.
+
+**Fotos de más calidad (Pexels):** crea una clave gratuita en [pexels.com/api](https://www.pexels.com/api/) y ponla en Railway como variable `PEXELS_API_KEY`. El servidor busca en Pexels por todos tus dispositivos, sin pegar la clave en cada uno. Sin la variable se usan Openverse y Wikimedia Commons, como antes.
 
 Las tablas se crean solas al arrancar. Para probar en local: `cd server && npm i && TEST_DATABASE_URL=postgres://… npm test`.
 

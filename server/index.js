@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const { createApp } = require('./app');
+const { pexelsProvider, createPhotos } = require('./photos');
 
 (async () => {
   if (!process.env.DATABASE_URL) throw new Error('Falta DATABASE_URL');
@@ -13,8 +14,10 @@ const { createApp } = require('./app');
     ssl: local || process.env.PGSSL === 'off' ? false : { rejectUnauthorized: false },
   });
   await pool.query(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+  const photos = process.env.PEXELS_API_KEY
+    ? createPhotos({ providers: [pexelsProvider(process.env.PEXELS_API_KEY)] }) : null;
   const app = createApp({
-    pool, secret: process.env.JWT_SECRET,
+    pool, secret: process.env.JWT_SECRET, photos,
     allowedOrigin: process.env.ALLOWED_ORIGIN || 'https://diegociborro99-bot.github.io',
   });
   const port = process.env.PORT || 3000;

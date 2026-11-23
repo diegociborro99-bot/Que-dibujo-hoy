@@ -5,6 +5,7 @@ const fs = require('fs');
 const { Pool } = require('pg');
 const { createApp } = require('./app');
 const { merge, cleanPayload } = require('./sync');
+const { createPhotos, pexelsProvider } = require('./photos');
 
 const dr = (id, d, extra = {}) => ({ id, d, cat: 'objeto', es: 'Una taza', en: 'cup', m: 'lapiz', img: null, ...extra });
 
@@ -24,12 +25,27 @@ test('cleanPayload: descarta dibujos inválidos y urls no http', () => {
   assert.strictEqual(p.idx, 6);
 });
 
+test('photos: normaliza Pexels, cachea y tolera proveedores caídos', async () => {
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls++;
+    return { ok: true, json: async () => ({ photos: [{ id: 7, width: 4000, height: 3000, url: 'https://www.pexels.com/photo/7/', photographer: 'Ana', alt: 'Desk lamp', src: { large2x: 'https://i/l2.jpg', medium: 'https://i/m.jpg' } }] }) };
+  };
+  const search = createPhotos({ providers: [pexelsProvider('k', fakeFetch), async () => { throw new Error('caído'); }] });
+  const a = await search('desk lamp');
+  assert.deepStrictEqual(a, [{ id: 'px7', src: 'https://i/l2.jpg', thumb: 'https://i/m.jpg', title: 'Desk lamp', by: 'Ana', lic: 'Licencia Pexels', link: 'https://www.pexels.com/photo/7/', from: 'Pexels', w: 4000, h: 3000 }]);
+  await search('desk lamp');
+  assert.strictEqual(calls, 1, 'la segunda búsqueda sale de la caché');
+  const bad = createPhotos({ providers: [async () => { throw new Error('x'); }] });
+  assert.deepStrictEqual(await bad('lamp'), []);
+});
+
 const url = process.env.TEST_DATABASE_URL;
 test('API de extremo a extremo', { skip: !url && 'sin TEST_DATABASE_URL' }, async (t) => {
   const pool = new Pool({ connectionString: url });
   await pool.query('DROP TABLE IF EXISTS drawings, sync_state, users CASCADE');
   await pool.query(fs.readFileSync(__dirname + '/schema.sql', 'utf8'));
-  const app = createApp({ pool, secret: 'x'.repeat(32), allowedOrigin: 'https://ok.example' });
+  const app = createApp({ pool, secret: 'x'.repeat(32), allowedOrigin: 'https://ok.example', photos: async (q) => [{ id: 'px1', title: q }] });
   const srv = app.listen(0);
   const base = 'http://127.0.0.1:' + srv.address().port;
   t.after(async () => { srv.close(); await pool.end(); });
@@ -80,6 +96,10 @@ test('API de extremo a extremo', { skip: !url && 'sin TEST_DATABASE_URL' }, asyn
   assert.strictEqual(home.status, 200);
   assert.match(home.headers.get('content-type'), /text\/html/);
   assert.match(await home.text(), /¿Qué dibujo hoy\?/);
+
+  // Fotos
+  assert.strictEqual((await call('/photos?q=a')).status, 400);
+  assert.deepStrictEqual((await call('/photos?q=desk%20lamp')).body, { photos: [{ id: 'px1', title: 'desk lamp' }] });
 
   // CORS
   const pre = await fetch(base + '/sync', { method: 'OPTIONS', headers: { Origin: 'https://ok.example' } });

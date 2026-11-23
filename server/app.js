@@ -19,7 +19,7 @@ function limiter(max = 20, windowMs = 10 * 60 * 1000) {
   };
 }
 
-function createApp({ pool, secret, allowedOrigin }) {
+function createApp({ pool, secret, allowedOrigin, photos = null }) {
   if (!secret || secret.length < 16) throw new Error('JWT_SECRET demasiado corto');
   const app = express();
   app.set('trust proxy', 1);
@@ -40,6 +40,18 @@ function createApp({ pool, secret, allowedOrigin }) {
   });
 
   app.get('/health', (req, res) => res.json({ ok: true }));
+
+  // Fotos de referencia (opcional: solo si hay clave de Pexels en el servidor).
+  const photoLimit = limiter(120);
+  app.get('/photos', photoLimit, async (req, res, next) => {
+    try {
+      const q = String(req.query.q || '').trim().slice(0, 100);
+      if (q.length < 2) return res.status(400).json({ error: 'Falta la búsqueda.' });
+      const list = photos ? await photos(q) : [];
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      res.json({ photos: list });
+    } catch (e) { next(e); }
+  });
 
   const authLimit = limiter();
   const creds = (req) => {

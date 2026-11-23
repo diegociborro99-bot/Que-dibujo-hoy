@@ -72,6 +72,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:28px}
 .ticks{display:flex;justify-content:space-between;font-size:13px;color:var(--soft)}
 .ticks span.on{color:var(--ink);font-weight:600}
 .tip{background:var(--paper);border-radius:14px;padding:14px 16px;font:500 21px/1.25 Caveat,cursive;border-left:4px solid var(--accent)}
+.note{font:500 15px/1.4 Figtree,sans-serif;color:var(--soft);display:flex;gap:8px}.note::before{content:'✎';color:var(--accent-ink);font-size:18px;line-height:1.2}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
 .btn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);font:600 15px Figtree,sans-serif;border-radius:12px;min-height:48px;cursor:pointer;padding:10px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px}
 .btn.main{grid-column:1/-1;background:var(--accent);color:var(--on-accent);border-color:transparent;font-size:16px;min-height:54px;transition:background .6s}
@@ -177,6 +178,7 @@ details.cfg a{color:var(--ink)}
       </div>
 
       <div class="tip" id="tip"></div>
+      <div class="note hide" id="note"></div>
 
       <div class="actions">
         <button class="btn main" id="done">¡Lo he dibujado! · Siguiente</button>
@@ -275,8 +277,124 @@ const CATS=[
   2:[['Montañas con niebla','misty mountains'],['Un camino en el bosque','forest path'],['Acantilados','sea cliffs'],['Un río con piedras','river rocks'],['Un pueblo en la ladera','hillside village']],
   3:[['Una cascada','waterfall'],['Un bosque en otoño','autumn forest'],['Una costa rocosa con olas','rocky coast waves'],['Un valle con montañas nevadas','snowy mountain valley'],['Barcas de pescadores en la playa','fishing boats beach']]}}
 ];
+// Pequeñas notas de cómo abordar cada tema (clave = término de búsqueda).
+const NOTES={
+ 'coffee cup':'Una elipse en la boca de la taza: dibújala completa, aunque no se vea el fondo.',
+ 'apple fruit':'Empieza por una esfera; la sombra propia la separa del fondo.',
+ 'teapot':'Busca la simetría: una línea central y el pico y el asa en equilibrio.',
+ 'antique key':'Formas simples juntas: círculo, tallo y dientes. Cuida las proporciones.',
+ 'glass bottle':'No dibujes el cristal: dibuja los reflejos y los oscuros que lo rodean.',
+ 'pear fruit':'Dos masas, una grande y otra pequeña, unidas por un cuello suave.',
+ 'vintage camera':'Bloquea cajas y círculos primero; los detalles metálicos, al final.',
+ 'old sneakers':'Fíjate en las arrugas y los pliegues: cuentan la historia del objeto.',
+ 'desk lamp':'Es una estructura de ángulos: mide las inclinaciones de cada brazo.',
+ 'vintage scissors':'Dos óvalos y dos hojas cruzadas: la clave es el ángulo de la apertura.',
+ 'pocket watch':'Un círculo perfecto es difícil: dibuja primero un cuadrado y redondéalo.',
+ 'watering can':'Mira la curva del asa y la inclinación del pitorro.',
+ 'still life kitchen':'Elige tres objetos y ordénalos; no intentes dibujarlo todo.',
+ 'typewriter':'Primero la caja general; las teclas, como textura, no una a una.',
+ 'vegetable market stall':'Agrupa por colores en grandes manchas antes de ir a cada verdura.',
+ 'vintage bicycle':'Las ruedas son elipses según el punto de vista; revisa que sean iguales.',
+ 'workbench tools':'Mira los ritmos: repeticiones de mangos y filos.',
+ 'bookshelf books':'Líneas de perspectiva para los estantes; los lomos, en bloques de color.',
+ 'monstera leaf':'Una nervadura central y los huecos como formas negativas.',
+ 'small cactus':'Mira la silueta primero; las espinas, solo sugeridas.',
+ 'tulip flower':'Una forma de copa; los pétalos se tapan unos a otros.',
+ 'succulent plant':'Rosetón en espiral: dibuja capas de dentro hacia fuera.',
+ 'autumn leaf':'Una hoja simple: marca la nervadura y deja que el color haga el resto.',
+ 'daisy flower':'El centro es una elipse según el ángulo; los pétalos salen de ahí.',
+ 'olive branch':'La rama marca el ritmo; las hojas, alargadas y alternas.',
+ 'lavender bunch':'Un manojo: dibuja las espigas como masa y algunas sueltas.',
+ 'peony flower':'Capas de pétalos que se solapan: de claro a oscuro hacia el centro.',
+ 'fern':'Mira la curva general antes de las hojitas; repite el patrón con variaciones.',
+ 'potted plant terracotta':'La maceta es una forma geométrica, la planta, orgánica. Juega con el contraste.',
+ 'sunflowers':'Un disco central y pétalos alrededor; no los dibujes todos iguales.',
+ 'greenhouse plants':'Estructura de líneas rectas frente a masas orgánicas.',
+ 'wildflower meadow':'Primero manchas de color, luego unas pocas flores con detalle.',
+ 'hydrangea bush':'Una bola de pequeñas flores: agrúpalas por luz y sombra.',
+ 'indoor plants jungle':'Superposición de hojas: de lo más cercano a lo más lejano.',
+ 'bonsai tree':'Siluetas con carácter: mira el tronco y el hueco entre las ramas.',
+ 'cherry blossom tree':'Ramas oscuras con manchas claras de flor; sugiere, no cuentes pétalos.',
+ 'woman profile portrait':'Una línea en S de la frente a la barbilla; mide dónde queda el ojo.',
+ 'portrait soft light':'Sombras suaves: deja pasar el degradado, sin líneas duras.',
+ 'man profile portrait':'La mandíbula y la nariz marcan el carácter; empieza por ahí.',
+ 'portrait eyes closed':'La expresión viene de los párpados: cuida la curva de las pestañas.',
+ 'elderly man portrait':'Arrugas como líneas que siguen la forma del rostro, no al azar.',
+ 'portrait hat':'El sombrero proyecta una sombra: úsala para modelar la cara.',
+ 'laughing portrait':'Los pómulos suben y los ojos se achican: ahí está la risa.',
+ 'backlit portrait':'Casi todo es sombra: dibuja el contorno de luz y reduce el resto.',
+ 'elderly woman portrait':'Cuida el cuello y las manos si salen: cuentan tanto como la cara.',
+ 'bearded man portrait dramatic':'Dibuja la barba como una masa, no pelo a pelo.',
+ 'portrait hands face':'Las manos son tan expresivas como la cara; mide su tamaño frente al rostro.',
+ 'portrait glasses':'Las gafas siguen la perspectiva del rostro; los reflejos, pocos y claros.',
+ 'old fisherman portrait':'Texturas: piel curtida, barba, gorro. Contrasta lo suave con lo áspero.',
+ 'headscarf portrait':'Los pliegues del pañuelo son ritmo: grandes formas antes de los detalles.',
+ 'person sitting reading':'Una línea de acción desde la cabeza hasta el asiento; la postura cuenta la historia.',
+ 'person standing silhouette':'Solo la silueta: si se reconoce, está bien dibujada.',
+ 'person walking street':'Un pie en el suelo y otro en el aire: el cuerpo se inclina hacia delante.',
+ 'person from behind':'Los hombros y la cadera marcan el equilibrio.',
+ 'ballet dancer pose':'Una línea de acción continua del pie a la mano; luego, volumen.',
+ 'street musician':'El instrumento da la postura: míralo junto con los brazos.',
+ 'yoga pose':'Busca la línea más larga del cuerpo y dibuja desde ella.',
+ 'runner running':'Brazos y piernas se oponen: cuando una va delante, la otra va atrás.',
+ 'person sitting bench':'El peso cae en la cadera; mide el ángulo de las rodillas.',
+ 'contemporary dance':'Líneas dinámicas: gestos rápidos de 30 segundos antes del dibujo.',
+ 'skateboarder jump':'Une cuerpo y tabla con una sola línea de movimiento.',
+ 'rock climber':'Cuatro puntos de apoyo: dibuja primero dónde están manos y pies.',
+ 'people talking cafe':'Pequeñas siluetas, cada una con su gesto. Cuida los ángulos de las cabezas.',
+ 'boxer training':'Pesos y tensión: los hombros hacia delante, los puños protegidos.',
+ 'cat sleeping':'Una forma redonda y suave; las orejas y la cola dan la pista.',
+ 'bird on branch':'Un óvalo para el cuerpo y otro para la cabeza; las patas, finas y pequeñas.',
+ 'goldfish':'Cuerpo en gota; las aletas son telas casi transparentes.',
+ 'snail':'La concha es una espiral: dibuja el centro y ve ampliando.',
+ 'ladybug':'Un semicírculo con una línea central; los puntos, al final.',
+ 'red fox':'Orejas triangulares y hocico fino; la cola es casi la mitad del dibujo.',
+ 'owl':'Una gran forma redonda; los ojos centran la mirada.',
+ 'horse portrait':'Cuidado con las proporciones: la cabeza es larga y fina.',
+ 'dog lying':'Busca el descanso en las curvas: ninguna línea tensa.',
+ 'tortoise':'Caparazón con patrón de placas: fíjate cómo se curvan con el volumen.',
+ 'hummingbird':'El pico largo marca la dirección; las alas, líneas rápidas.',
+ 'peacock feathers':'Plumas con ojos: dibuja el patrón en una, repite con variaciones.',
+ 'tiger':'Rayas que siguen la forma del cuerpo: curvan con el volumen.',
+ 'chameleon':'Textura de piel con pequeños círculos; las patas, como pinzas.',
+ 'seagulls flock':'Varias aves en distintas direcciones: simplifica cada una a una forma.',
+ 'deer forest':'Cuello alto y patas finas: mide la cabeza frente al cuerpo.',
+ 'octopus':'Tentáculos como curvas que se enroscan; ventosas solo en el primer plano.',
+ 'small cottage':'Una caja con un tejado: acierta las proporciones antes de las ventanas.',
+ 'old wooden door':'La madera está llena de vetas: dibuja un par y sugiere el resto.',
+ 'window flowers':'El marco ordena la composición; las flores, como masas de color.',
+ 'lighthouse':'Una forma cónica con líneas verticales: cuida la perspectiva desde abajo.',
+ 'horreo asturias':'Estructura sobre pilares: revisa que los apoyos queden verticales.',
+ 'colorful houses street':'Un punto de fuga y ventanas que se encogen con la distancia.',
+ 'romanesque church':'Arcos de medio punto: dibuja un semicírculo perfecto, ayúdate de una guía.',
+ 'windmill':'Las aspas forman una cruz; revisa su ángulo con el cuerpo.',
+ 'wrought iron balcony':'Líneas finas y curvas repetidas: un patrón, no cada barrote.',
+ 'cafe terrace street':'Mesas y sillas ayudan a medir la perspectiva.',
+ 'gothic cathedral facade':'Simetría vertical: dibuja una línea central y compara los lados.',
+ 'old town alley':'Dos puntos de fuga o uno central: decide antes de empezar.',
+ 'harbor boats town':'Los reflejos en el agua repiten los colores, alargados y rotos.',
+ 'train station interior':'Estructura de arcos que se repiten, cada uno más pequeño.',
+ 'market square town':'Primero la plaza como formas grandes; los detalles, solo en el primer plano.',
+ 'sea horizon':'Una línea de horizonte horizontal y gradientes en el cielo y el mar.',
+ 'lone tree hill':'Una composición minimalista: el árbol en un tercio del cuadro.',
+ 'calm lake':'El reflejo repite la orilla invertida, algo más oscuro.',
+ 'sand dunes':'Curvas de luz y sombra suaves; sin líneas rectas.',
+ 'field sunset':'Contraluz: el cielo es lo más claro y todo lo demás, siluetas.',
+ 'misty mountains':'Capas: más lejos, más claro y menos contraste.',
+ 'forest path':'El camino te lleva al fondo; un árbol oscuro en primer plano da profundidad.',
+ 'sea cliffs':'Estratos y grietas: las rocas son masas con aristas.',
+ 'river rocks':'Las piedras redondas sombreadas de un lado; el agua, con pocas líneas.',
+ 'hillside village':'Casas como cajas escalonadas; la ladera marca el ritmo.',
+ 'waterfall':'Deja el blanco del papel para el agua; oscurece lo que la rodea.',
+ 'autumn forest':'Manchas de color cálido y troncos oscuros como verticales.',
+ 'rocky coast waves':'Contraste entre roca oscura y espuma blanca.',
+ 'snowy mountain valley':'La nieve es el papel: modela solo con las sombras.',
+ 'fishing boats beach':'Los cascos tienen curvas largas; repetidas, dan ritmo.'
+};
+// Términos que empujan la búsqueda hacia fotos donde el tema es el protagonista.
+const FOCUS={objeto:['close up','isolated','single object'],planta:['close up','macro'],rostro:['portrait close up','face'],pose:['full body','figure'],animal:['close up','portrait'],edificio:['facade','architecture'],paisaje:['landscape','scenic']};
 const MED={
-  lapiz:{es:'lápiz',q:['black and white','monochrome','dramatic light'],pin:'black and white photography',tips:{1:'Tres valores: blanco del papel, gris medio y oscuro. Nada más.',2:'Encaja con líneas suaves, luego busca dónde está la sombra más oscura.',3:'Entorna los ojos para ver masas de luz y sombra antes del detalle.'}},
+  lapiz:{es:'lápiz',q:['black and white','monochrome','dramatic light','high contrast'],pin:'black and white photography',tips:{1:'Tres valores: blanco del papel, gris medio y oscuro. Nada más.',2:'Encaja con líneas suaves, luego busca dónde está la sombra más oscura.',3:'Entorna los ojos para ver masas de luz y sombra antes del detalle.'}},
   color:{es:'lápices de colores',q:['colorful','vibrant'],pin:'colorful photography',tips:{1:'Elige solo 3 lápices y mézclalos por capas finas.',2:'Capas ligeras primero; aprieta solo al final, en los oscuros.',3:'Busca los colores dentro de las sombras: rara vez son grises.'}},
   acuarela:{es:'acuarela',q:['soft light','misty','pastel'],pin:'soft light photography',tips:{1:'Una sola mancha húmeda y deja que el agua trabaje.',2:'De claro a oscuro: reserva los blancos desde el principio.',3:'Bloquea las grandes masas en mojado; detalles al final, en seco.'}}
 };
@@ -328,6 +446,8 @@ function renderTopic(){
   $('subject').textContent=cur?cur.es:'—';
   $('meta').textContent=a?`Sin foto · ${MED[st.medium].es} · 10–20 min`:`${LVL[st.level].es} · ${MED[st.medium].es} · ${LVL[st.level].t}`;
   if(cur&&!a)$('pin').href=pinUrl(cur.en,st.medium);
+  const n=!a&&cur&&NOTES[cur.en];
+  $('note').textContent=n||'';$('note').classList.toggle('hide',!n);
 }
 function renderStats(){
   const all=[...CATS,ABS],n={};
@@ -368,46 +488,85 @@ function goTo(i){
   renderRota();renderControls();newTopic();
 }
 
+async function server(q){
+  if(!api())return [];
+  const r=await fetch(api()+'/photos?q='+encodeURIComponent(q));
+  if(!r.ok)throw 0;
+  return (await r.json()).photos||[];
+}
 async function pexels(q){
   let key='';try{key=localStorage.getItem('quedibujo.pexels')||''}catch(e){}
   if(!key)return [];
   const r=await fetch('https://api.pexels.com/v1/search?per_page=30&query='+encodeURIComponent(q),{headers:{Authorization:key}});
   if(!r.ok)throw 0;
   const j=await r.json();
-  return (j.photos||[]).map(p=>({id:'px'+p.id,src:p.src.large2x||p.src.large,thumb:p.src.medium,title:p.alt||'Foto de Pexels',by:p.photographer,lic:'Licencia Pexels',link:p.url,from:'Pexels'}));
+  return (j.photos||[]).map(p=>({id:'px'+p.id,src:p.src.large2x||p.src.large,thumb:p.src.medium,title:p.alt||'Foto de Pexels',by:p.photographer,lic:'Licencia Pexels',link:p.url,from:'Pexels',w:p.width,h:p.height}));
 }
 async function openverse(q){
   const u='https://api.openverse.org/v1/images/?page_size=20&mature=false&category=photograph&q='+encodeURIComponent(q);
   const r=await fetch(u);if(!r.ok)throw 0;
   const j=await r.json();
-  return (j.results||[]).map(x=>({id:'ov'+x.id,src:x.url,thumb:x.thumbnail,title:x.title,by:x.creator,lic:(x.license||'').toUpperCase()+' '+(x.license_version||''),link:x.foreign_landing_url,from:'Openverse'}));
+  return (j.results||[]).map(x=>({id:'ov'+x.id,src:x.url,thumb:x.thumbnail,title:x.title,by:x.creator,lic:(x.license||'').toUpperCase()+' '+(x.license_version||''),link:x.foreign_landing_url,from:'Openverse',w:x.width,h:x.height,tags:(x.tags||[]).map(t=>t.name).join(' ')}));
 }
 async function commons(q){
   const u='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=20&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1400&gsrsearch='+encodeURIComponent('filetype:bitmap '+q);
   const r=await fetch(u);if(!r.ok)throw 0;
   const j=await r.json();
   return Object.values(j.query?.pages||{}).filter(p=>p.imageinfo).map(p=>{const i=p.imageinfo[0],m=i.extmetadata||{};
-    return {id:'wm'+p.pageid,src:i.thumburl||i.url,thumb:i.thumburl,title:p.title.replace(/^File:|\.\w+$/g,''),by:(m.Artist?.value||'').replace(/<[^>]+>/g,''),lic:m.LicenseShortName?.value||'',link:i.descriptionurl,from:'Wikimedia Commons'}});
+    return {id:'wm'+p.pageid,src:i.thumburl||i.url,thumb:i.thumburl,title:p.title.replace(/^File:|\.\w+$/g,''),by:(m.Artist?.value||'').replace(/<[^>]+>/g,''),lic:m.LicenseShortName?.value||'',link:i.descriptionurl,from:'Wikimedia Commons',w:i.thumbwidth,h:i.thumbheight}});
 }
 
+// ---- Elegir la mejor referencia: que el tema sea el protagonista ----
+const STOP=new Set(['a','an','the','of','on','in','with','and','for','at','to','from','old','small','vintage','antique','close','up']);
+const CLUTTER=['collection','set','group','many','various','several','interior','room','crowd','workspace','laptop','computer','furniture','decor','arrangement','scene','wall'];
+const PROMINENT=['close','closeup','close-up','macro','isolated','portrait','single','detail','studio'];
+const stem=w=>w.length>3?w.replace(/(es|s)$/,''):w;
+const words=t=>String(t||'').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f\s-]/g,' ').split(/\s+/).filter(Boolean);
+function score(f,cur,m){
+  const subj=words(cur.en).filter(w=>!STOP.has(w)).map(stem);
+  const tw=words(f.title),tags=words(f.tags),bag=new Set([...tw,...tags].map(stem));
+  const hit=subj.length?subj.filter(w=>bag.has(w)).length/subj.length:0;
+  let sc=3*hit;
+  const first=new Set(tw.slice(0,5).map(stem));
+  if(subj.some(w=>first.has(w)))sc+=.5;
+  const own=new Set(subj);
+  sc-=Math.min(2,CLUTTER.filter(w=>tw.includes(w)&&!own.has(stem(w))).length*.8);
+  sc-=Math.min(1.5,Math.max(0,tw.filter(w=>!STOP.has(w)).length-9)*.15);
+  if(PROMINENT.some(w=>tw.includes(w)))sc+=.5;
+  const mn=Math.min(f.w||0,f.h||0);
+  if(mn){sc+=mn>=1000?.5:mn<500?-1:0}
+  if(f.from==='Pexels')sc+=.5;
+  const medWords=m.q.join(' ').split(' ');
+  if(medWords.some(w=>w.length>4&&tw.includes(w)))sc+=.3;
+  return {f,hit,sc};
+}
 async function findPhoto(){
   const my=++req,cur=st.cur,m=MED[st.medium];
   const img=$('photo').querySelector('img');
   if(img)img.classList.add('loading');
   showState('<div class="brush"></div>Buscando una referencia…',!img);
-  const tries=[cur.en+' '+pick(m.q),cur.en];
+  const focus=pick(FOCUS[cat().id]||['']);
+  const tries=[[cur.en,focus,pick(m.q)],[cur.en,focus],[cur.en]].map(a=>a.join(' ').trim());
+  const sources=[server,pexels,openverse,commons];
   let found=[];
   for(const q of tries){
-    try{found=await pexels(q)}catch(e){found=[]}
-    if(found.length>=3)break;
-    try{found=found.concat(await openverse(q))}catch(e){}
-    if(found.length>=3)break;
-    try{found=found.concat(await commons(q))}catch(e){}
-    if(found.length>=3)break;
+    const got=await Promise.all(sources.map(fn=>fn(q).catch(()=>[])));
+    if(my!==req)return;
+    const seenIds=new Set(found.map(x=>x.id));
+    found=found.concat(got.flat().filter(x=>x&&x.src&&!seenIds.has(x.id)));
+    // Con tres o más fotos que mencionan el tema, no hace falta ampliar la búsqueda.
+    if(found.map(f=>score(f,cur,m)).filter(x=>x.hit>=.5).length>=3)break;
   }
   if(my!==req)return;
-  const fresh=found.filter(f=>!st.seen.includes(f.id));
-  const f=pick(fresh.length?fresh:found);
+  let ranked=found.map(f=>score(f,cur,m));
+  const relevant=ranked.filter(x=>x.hit>0);
+  if(relevant.length)ranked=relevant;
+  const fresh=ranked.filter(x=>!st.seen.includes(x.f.id));
+  if(fresh.length>=3)ranked=fresh;
+  ranked.sort((a,b)=>b.sc-a.sc);
+  // Una de las mejores, al azar, para que no salga siempre la misma.
+  const pool=ranked.filter(x=>x.sc>=ranked[0]?.sc-1).slice(0,6);
+  const f=pool.length?pick(pool).f:null;
   if(!f){showFail(cur);return}
   st.seen=[...st.seen.slice(-200),f.id];
   showPhoto(f,my);
